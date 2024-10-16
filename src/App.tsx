@@ -81,6 +81,7 @@ function App() {
       const oneThirdWidth = imageDataLeft.width / 3;
       const oneThirdHeight = imageDataLeft.height / 3;
 
+      // Combine images
       const resultPixels: number[] = [];
       for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
         const index = Math.floor(counter / 4);
@@ -100,7 +101,113 @@ function App() {
         resultPixels.push(a);
       };
 
-      console.log(resultPixels.length);
+      // Mask border between images
+      // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
+      //   const index = Math.floor(counter / 4);
+
+      //   const x = index % imageDataLeft.width;
+      //   const y = Math.floor(index / imageDataLeft.width);
+
+      //   const xMinimumBoundary = oneThirdWidth - 5;
+      //   const xMaximumBoundary = oneThirdWidth + 5;
+
+      //   const yMinimumBoundary = oneThirdHeight - 5;
+      //   const yMaximumBoundary = oneThirdHeight + 5;
+
+      //   // This condition will need to change depending on where the boundary is, haven't figured out how to make this dynamic
+      //   if(
+      //     (x > xMinimumBoundary && x < xMaximumBoundary && y < yMaximumBoundary) ||
+      //     (y > yMinimumBoundary && y < yMaximumBoundary && x < xMaximumBoundary)
+      //   ) {
+      //     resultPixels[counter] = 0;
+      //     resultPixels[counter + 1] = 0;
+      //     resultPixels[counter + 2] = 0;
+      //     resultPixels[counter + 3] = 255;
+      //   } else {
+      //     continue;
+      //   }
+      // }
+
+      // Paint by neighbours
+      // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
+      //   const index = Math.floor(counter / 4);
+
+      //   const x = index % imageDataLeft.width;
+      //   const y = Math.floor(index / imageDataLeft.width);
+
+      //   const xMinimumBoundary = oneThirdWidth - 5;
+      //   const xMaximumBoundary = oneThirdWidth + 5;
+
+      //   const yMinimumBoundary = oneThirdHeight - 5;
+      //   const yMaximumBoundary = oneThirdHeight + 5;
+        
+      //   const getPixel = (data: number[], x: number, y: number) => {
+      //     const index = (y * imageDataLeft.width + x) * 4;
+      //     return [data[index], data[index + 1], data[index + 2], data[index + 3]]; // RGBA
+      //   };
+
+      //   const setPixel = (data: number[], x: number, y: number, pixel: number[]) => {
+      //     const index = (y * imageDataLeft.width + x) * 4;
+      //     data[index] = pixel[0];
+      //     data[index + 1] = pixel[1];
+      //     data[index + 2] = pixel[2];
+      //     data[index + 3] = pixel[3];
+      //   };
+
+      //   const isMasked = (data: number[], x: number, y: number) => {
+      //     const index = (y * imageDataLeft.width + x) * 4;
+      //     return data[index] === 0 && data[index + 1] === 0 && data[index + 2] === 0 && data[index + 3] === 255;
+      //   };
+
+      //   const bilinearFill = (data: number[], x: number, y: number) => {
+      //     let neighbors = [];
+      //     if (x > 0) neighbors.push(getPixel(data, x - 1, y)); // Left
+      //     if (x > 1) neighbors.push(getPixel(data, x - 2, y)); // Left
+      //     if (x > 2) neighbors.push(getPixel(data, x - 3, y)); // Left
+      //     if (x > 3) neighbors.push(getPixel(data, x - 4, y)); // Left
+      //     if (x > 4) neighbors.push(getPixel(data, x - 5, y)); // Left
+
+      //     if (x < imageDataLeft.width) neighbors.push(getPixel(data, x + 1, y)); // Right
+      //     if (x < imageDataLeft.width - 1) neighbors.push(getPixel(data, x + 2, y)); // Right
+      //     if (x < imageDataLeft.width - 2) neighbors.push(getPixel(data, x + 3, y)); // Right
+      //     if (x < imageDataLeft.width - 3) neighbors.push(getPixel(data, x + 4, y)); // Right
+      //     if (x < imageDataLeft.width - 4) neighbors.push(getPixel(data, x + 5, y)); // Right
+
+      //     if (y > 0) neighbors.push(getPixel(data, x, y - 1)); // Top
+      //     if (y > 1) neighbors.push(getPixel(data, x, y - 2)); // Top
+      //     if (y > 2) neighbors.push(getPixel(data, x, y - 3)); // Top
+      //     if (y > 3) neighbors.push(getPixel(data, x, y - 4)); // Top
+      //     if (y > 4) neighbors.push(getPixel(data, x, y - 5)); // Top
+
+      //     if (y < imageDataLeft.height) neighbors.push(getPixel(data, x, y + 1)); // Bottom
+      //     if (y < imageDataLeft.height - 1) neighbors.push(getPixel(data, x, y + 2)); // Bottom
+      //     if (y < imageDataLeft.height - 2) neighbors.push(getPixel(data, x, y + 3)); // Bottom
+      //     if (y < imageDataLeft.height - 3) neighbors.push(getPixel(data, x, y + 4)); // Bottom
+      //     if (y < imageDataLeft.height - 3) neighbors.push(getPixel(data, x, y + 5)); // Bottom
+
+      //     if (neighbors.length > 0) {
+      //       const avgColor = neighbors.reduce((acc, color) => {
+      //         return [acc[0] + color[0], acc[1] + color[1], acc[2] + color[2], acc[3] + color[3]];
+      //       }, [0, 0, 0, 0]);
+
+      //       const resultColor = avgColor.map(c => Math.round(c / neighbors.length));
+      //       setPixel(data, x, y, resultColor);
+      //     }
+      //   }
+
+      //   // This condition will need to change depending on where the boundary is, haven't figured out how to make this dynamic
+      //   for(let counter = 0; counter < 100; counter++) {
+      //     if(
+      //       (x > xMinimumBoundary && x < xMaximumBoundary && y < yMaximumBoundary) ||
+      //       (y > yMinimumBoundary && y < yMaximumBoundary && x < xMaximumBoundary)
+      //     ) { // Check nearest neighbors to fill the masked pixel
+      //       bilinearFill(resultPixels, x, y);
+      //     } else {
+      //       continue;
+      //     }
+      //   }
+      // }
+
       const resultClampedArray = new Uint8ClampedArray(resultPixels);
       const resultImageData = new ImageData(resultClampedArray, imageDataLeft.width, imageDataRight.width);
       drawImageDataToCanvas(resultImageData, canvas);
