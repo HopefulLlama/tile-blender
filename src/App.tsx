@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import ReactImageUploading, { ImageListType, ImageType } from 'react-images-uploading';
+import { copySegmentOne } from './ImageCopyStrategies';
 
 function App() {
   const [ images, setImages ] = useState<ImageListType>([]);
@@ -27,7 +28,6 @@ function App() {
         canvas.width = temporaryImage.width;
 
         const context = canvas.getContext("2d");
-        
         if(context) {
           context.drawImage(temporaryImage, 0, 0);
 
@@ -62,7 +62,7 @@ function App() {
       const canvases = [canvas0, canvas1];
 
       const pairs: [HTMLCanvasElement, ImageType][] = canvases.map((canvas, index) => [canvas, images[index]]);
-      
+
       return Promise.all(pairs.map(([canvas, srcImage]) => drawImageToCanvas(srcImage, canvas)));
     } else {
       return Promise.resolve([]);
@@ -78,28 +78,7 @@ function App() {
       canvas.width = imageDataLeft.width;
       canvas.height = imageDataRight.height;
 
-      const oneThirdWidth = imageDataLeft.width / 3;
-      const oneThirdHeight = imageDataLeft.height / 3;
-
-      // Combine images
-      const resultPixels: number[] = [];
-      for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
-        const index = Math.floor(counter / 4);
-
-        const x = index % imageDataLeft.width;
-        const y = Math.floor(index / imageDataLeft.width);
-        const source = x < oneThirdWidth && y < oneThirdHeight ? imageDataLeft : imageDataRight;
-
-        const r = source.data[counter];
-        const g = source.data[counter + 1];
-        const b = source.data[counter + 2];
-        const a = source.data[counter + 3];
-
-        resultPixels.push(r);
-        resultPixels.push(g);
-        resultPixels.push(b);
-        resultPixels.push(a);
-      };
+      const resultImageData = copySegmentOne(imageDataLeft, imageDataRight);
 
       // Mask border between images
       // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
@@ -208,8 +187,8 @@ function App() {
       //   }
       // }
 
-      const resultClampedArray = new Uint8ClampedArray(resultPixels);
-      const resultImageData = new ImageData(resultClampedArray, imageDataLeft.width, imageDataRight.width);
+      // const resultClampedArray = new Uint8ClampedArray(resultPixels);
+      // const resultImageData = new ImageData(resultClampedArray, imageDataLeft.width, imageDataRight.width);
       drawImageDataToCanvas(resultImageData, canvas);
     }
   };
