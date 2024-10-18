@@ -1,17 +1,7 @@
-type BoundaryData = {
-  width: [ number, number ],
-  height: [ number, number ],
-};
-
-const getBoundaries = (image: ImageData): BoundaryData => {
-  const oneThirdWidth = image.width / 3;
-  const oneThirdHeight = image.width / 3;
-
-  return {
-    width: [ oneThirdWidth, oneThirdWidth * 2],
-    height: [ oneThirdHeight, oneThirdHeight * 2],
-  }
-};
+type Segment = {
+  row: number;
+  column: number;
+}
 
 const getPixelAtIndex = (source: ImageData, firstIndex: number): [number, number, number, number] => {
   return [
@@ -22,9 +12,27 @@ const getPixelAtIndex = (source: ImageData, firstIndex: number): [number, number
   ];
 }
 
-const processImagePair = (left: ImageData, right: ImageData, getSource: (left: ImageData, right: ImageData, visualX: number, visualY: number, boundaries: BoundaryData) => ImageData): ImageData => {
-  const boundaries = getBoundaries(left);
+const isPixelInSegment = (widthOrHeight: number, visualCoordinate: number, rowOrColumn: number): boolean => {
+  const lowerBound = widthOrHeight / 3 * (rowOrColumn - 1);
+  const upperBound = widthOrHeight / 3 * rowOrColumn;
 
+  return visualCoordinate >= lowerBound && visualCoordinate <= upperBound;
+};
+
+export const segments = {
+  1: { row: 1, column: 1 },
+  2: { row: 1, column: 2 },
+  3: { row: 1, column: 3 },
+  4: { row: 2, column: 1 },
+  5: { row: 2, column: 2 },
+  6: { row: 2, column: 3 },
+  7: { row: 3, column: 1 },
+  8: { row: 3, column: 2 },
+  9: { row: 3, column: 3 },
+};
+
+
+export const processImagePair = (left: ImageData, right: ImageData, segment: Segment): ImageData => {
   const resultsLength = 4 * left.width * left.height;
   const counterIncrement = 4;
 
@@ -35,7 +43,7 @@ const processImagePair = (left: ImageData, right: ImageData, getSource: (left: I
     const x = pixelIndex % left.width;
     const y = Math.floor(pixelIndex / left.width);
 
-    const source = getSource(left, right, x, y, boundaries);
+    const source = isPixelInSegment(left.width, x, segment.column) && isPixelInSegment(left.height, y, segment.row) ? left : right;
     const pixel = getPixelAtIndex(source, counter);
     resultPixels.push(...pixel);
   }
@@ -43,15 +51,3 @@ const processImagePair = (left: ImageData, right: ImageData, getSource: (left: I
   const resultClampedArray = new Uint8ClampedArray(resultPixels);
   return new ImageData(resultClampedArray, left.width, left.width);
 };
-
-export const copySegmentOne = (left: ImageData, right: ImageData): ImageData => {
-  return processImagePair(left, right, (left: ImageData, right: ImageData, visualX: number, visualY: number, boundaries: BoundaryData) => {
-    const { width, height } = boundaries;
-
-    const [ oneThirdWidth ] = width;
-    const [ oneThirdHeight ] = height;
-
-    return visualX < oneThirdWidth && visualY < oneThirdHeight ? left : right;
-  });
-};
-

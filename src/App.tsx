@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import ReactImageUploading, { ImageListType, ImageType } from 'react-images-uploading';
-import { copySegmentOne } from './ImageCopyStrategies';
+import { processImagePair, segments } from './ImageCopyStrategies';
 
 function App() {
   const [ images, setImages ] = useState<ImageListType>([]);
@@ -78,7 +78,7 @@ function App() {
       canvas.width = imageDataLeft.width;
       canvas.height = imageDataRight.height;
 
-      const resultImageData = copySegmentOne(imageDataLeft, imageDataRight);
+      const resultImageData = processImagePair(imageDataLeft, imageDataRight, segments[1]);
 
       // Mask border between images
       // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
