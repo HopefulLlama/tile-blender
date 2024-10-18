@@ -1,8 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import ReactImageUploading, { ImageListType, ImageType } from 'react-images-uploading';
 import { processImagePair, segments } from './ImageCopyStrategies';
+
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import CardMedia from '@mui/material/CardMedia';
+import Container from '@mui/material/Container';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import { ImageList, ImageListItem } from '@mui/material';
 
 function App() {
   const [images, setImages] = useState<ImageListType>([]);
@@ -105,15 +116,21 @@ function App() {
     });
   };
 
-  const doTheThing = async () => {
+  const processImages = async () => {
     const imageData = await drawSourceAndGetData();
     const results = drawResult(imageData);
     setImageResults(results);
   };
 
   return (
-    <div className="App">
-      <p>Upload two images</p>
+    <Container fixed>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Tile Blender
+          </Typography>
+        </Toolbar>
+      </AppBar>
       <ReactImageUploading
         multiple
         value={images}
@@ -129,37 +146,90 @@ function App() {
           isDragging,
           dragProps
         }) => (
-          // write your building UI
-          <div className="upload__image-wrapper">
-            <button
-              style={isDragging ? { color: "red" } : undefined}
-              onClick={onImageUpload}
-              {...dragProps}
-            >
-              Click or Drop here
-            </button>
-            <button onClick={onImageRemoveAll}>Remove all images</button>
-            {imageList.map((image, index) => (
-              <div key={index} className="image-item">
-                <img src={image.dataURL} />
-                <div className="image-item__btn-wrapper">
-                  <button onClick={() => onImageUpdate(index)}>Update</button>
-                  <button onClick={() => onImageRemove(index)}>Remove</button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Card variant="outlined" sx={{ marginTop: '1em', marginBottom: '1em'}}>
+            <Typography variant="h6">
+              Upload Images
+            </Typography>
+
+            Upload two images, and press process to get all permutations.
+
+            <Box>
+              <Button
+                variant="text"
+                style={isDragging ? { color: "red" } : undefined}
+                disabled={imageList.length === 2}
+                onClick={onImageUpload}
+                {...dragProps}
+              >
+                Click or Drop here
+              </Button>
+              {imageList.length > 0 && <Button variant="outlined" onClick={onImageRemoveAll}>Remove all images</Button>}
+            </Box>
+            <Box>
+              {imageList.map((image, index) => (
+                <Card variant="outlined" sx={{ display: "inline-block" }}>
+                  <CardContent>
+                    <Typography gutterBottom sx={{ color: 'text.secondary' }}>
+                      { index === 0 ? 'Left' : 'Right'}
+                    </Typography>
+                    <img src={image.dataURL} />
+                  </CardContent>
+                  <CardActions>
+                    <Button size="small" onClick={(() => onImageUpdate(index))}>Update</Button>
+                    <Button size="small" onClick={(() => onImageRemove(index))}>Remove</Button>
+                  </CardActions>
+                </Card>
+              ))}
+            </Box>
+
+            <Button variant='contained' disabled={imageList.length < 2} onClick={() => processImages()}>Process Images</Button>
+          </Card>
         )}
       </ReactImageUploading>
 
-      <button onClick={() => doTheThing()}>Do the thing</button>
+      <Card variant="outlined" sx={{ marginTop: '1em', marginBottom: '1em'}}>
+        <Typography variant="h6">
+          Results
+        </Typography>
 
-      <canvas id="0" />
-      <canvas id="1" />
+        {imageResults.length === 0 && <p>No results yet!</p>}
+        <Box sx={{ display: imageResults.length > 0 ? "block" : "none"}}>
+          <Box>
+            <Typography variant="h6">
+              Source Images
+            </Typography>
+            <Card sx={{ display: "inline-block" }}>
+              <CardContent>
+                <Typography gutterBottom sx={{ color: 'text.secondary' }}>
+                  Left
+                </Typography>
+                <canvas id="0" />
+              </CardContent>
+            </Card>
+            <Card sx={{ display: "inline-block" }}>
+              <CardContent>
+                <Typography gutterBottom sx={{ color: 'text.secondary' }}>
+                  Right
+                </Typography>
+                <canvas id="1" />
+              </CardContent>
+            </Card>
+          </Box>
 
-      <p>Results</p>
-      {imageResults.map((result) => <img src={result} />)}
-    </div>
+          <Box>
+            <Typography variant="h6">
+              Permutations
+            </Typography>
+            <ImageList cols={8}>
+              {imageResults.map((result) => <ImageListItem key={result}>
+                <img src={result} />
+              </ImageListItem>)}
+            </ImageList>
+          </Box>
+        </Box>
+      </Card>
+
+    </Container>
   );
 }
 
