@@ -19,7 +19,7 @@ const isPixelInSegment = (widthOrHeight: number, visualCoordinate: number, rowOr
   return visualCoordinate >= lowerBound && visualCoordinate <= upperBound;
 };
 
-export const segments = {
+export const segments: { [key: number]: { row: number, column: number} } = {
   1: { row: 1, column: 1 },
   2: { row: 1, column: 2 },
   3: { row: 1, column: 3 },
@@ -32,7 +32,7 @@ export const segments = {
 };
 
 
-export const processImagePair = (left: ImageData, right: ImageData, segment: Segment): ImageData => {
+export const processImagePair = (left: ImageData, right: ImageData, segments: Segment[]): ImageData => {
   const resultsLength = 4 * left.width * left.height;
   const counterIncrement = 4;
 
@@ -43,7 +43,8 @@ export const processImagePair = (left: ImageData, right: ImageData, segment: Seg
     const x = pixelIndex % left.width;
     const y = Math.floor(pixelIndex / left.width);
 
-    const source = isPixelInSegment(left.width, x, segment.column) && isPixelInSegment(left.height, y, segment.row) ? left : right;
+    const isLeft = segments.some((segment) => isPixelInSegment(left.width, x, segment.column) && isPixelInSegment(left.height, y, segment.row));
+    const source = isLeft ? left : right;
     const pixel = getPixelAtIndex(source, counter);
     resultPixels.push(...pixel);
   }
