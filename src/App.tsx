@@ -149,7 +149,7 @@ function App() {
         multiple
         value={uploadedImages}
         onChange={onChange}
-        maxNumber={8}
+        maxNumber={2}
       >
         {({
           imageList,
@@ -234,7 +234,7 @@ function App() {
             <Typography variant="h6">
               Permutations
             </Typography>
-            <ImageList cols={2}>
+            <ImageList cols={8}>
               {imageResults.map((result) => <ImageListItem key={result}>
                 <img src={result} />
               </ImageListItem>)}
