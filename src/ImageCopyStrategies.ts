@@ -3,22 +3,6 @@ type Segment = {
   column: number;
 }
 
-const getPixelAtIndex = (source: ImageData, firstIndex: number): [number, number, number, number] => {
-  return [
-    source.data[firstIndex],
-    source.data[firstIndex + 1],
-    source.data[firstIndex + 2],
-    source.data[firstIndex + 3],
-  ];
-}
-
-const isPixelInSegment = (widthOrHeight: number, visualCoordinate: number, rowOrColumn: number): boolean => {
-  const lowerBound = widthOrHeight / 3 * (rowOrColumn - 1);
-  const upperBound = widthOrHeight / 3 * rowOrColumn;
-
-  return visualCoordinate >= lowerBound && visualCoordinate <= upperBound;
-};
-
 export const segments: { [key: number]: { row: number, column: number} } = {
   1: { row: 1, column: 1 },
   2: { row: 1, column: 2 },
@@ -31,6 +15,21 @@ export const segments: { [key: number]: { row: number, column: number} } = {
   9: { row: 3, column: 3 },
 };
 
+export const getPixelAtIndex = (source: ImageData, firstIndex: number): [number, number, number, number] => {
+  return [
+    source.data[firstIndex],
+    source.data[firstIndex + 1],
+    source.data[firstIndex + 2],
+    source.data[firstIndex + 3],
+  ];
+}
+
+const isPixelInSegment = (widthOrHeight: number, visualCoordinate: number, rowOrColumn: number): boolean => {
+  const lowerBound = Math.round(widthOrHeight / 3) * (rowOrColumn - 1);
+  const upperBound = Math.round(widthOrHeight / 3) * rowOrColumn;
+
+  return visualCoordinate >= lowerBound && visualCoordinate <= upperBound;
+};
 
 export const processImagePair = (left: ImageData, right: ImageData, segments: Segment[]): ImageData => {
   const resultsLength = 4 * left.width * left.height;

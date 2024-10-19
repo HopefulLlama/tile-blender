@@ -14,13 +14,14 @@ import Container from '@mui/material/Container';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ImageList, ImageListItem } from '@mui/material';
+import { processImageSeam, segmentToSeams } from './ImageSeamProcessor';
 
 function App() {
-  const [images, setImages] = useState<ImageListType>([]);
+  const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
   const [imageResults, setImageResults] = useState<string[]>([]);
 
-  const canvasRef0 = useRef<HTMLCanvasElement | null>(null);
-  const canvasRef1 = useRef<HTMLCanvasElement | null>(null);
+  const canvasLeftRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRightRef = useRef<HTMLCanvasElement | null>(null);
 
   const getCombinations = (digits: number[]): number[][] => {
     const result: number[][] = [];
@@ -46,15 +47,15 @@ function App() {
   const permutations = getCombinations(Object.keys(segments).map((key) => parseInt(key, 10)));
 
     useEffect(() => {
-      canvasRef0.current = document.getElementById("0") as HTMLCanvasElement;
-      canvasRef1.current = document.getElementById("1") as HTMLCanvasElement;
+      canvasLeftRef.current = document.getElementById("0") as HTMLCanvasElement;
+      canvasRightRef.current = document.getElementById("1") as HTMLCanvasElement;
     }, [])
 
   const onChange = (imageList: ImageListType) => {
-    setImages(imageList);
+    setUploadedImages(imageList);
   };
 
-  const drawImageToCanvas = (image: ImageType, canvas: HTMLCanvasElement): Promise<ImageData> => {
+  const drawImageToCanvas = (image: ImageType, canvas: HTMLCanvasElement): Promise<void> => {
     return new Promise((resolve) => {
       const temporaryImage = new Image();
       temporaryImage.onload = () => {
@@ -64,9 +65,7 @@ function App() {
         const context = canvas.getContext("2d");
         if (context) {
           context.drawImage(temporaryImage, 0, 0);
-
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          resolve(imageData);
+          resolve();
         }
       };
 
@@ -76,33 +75,28 @@ function App() {
     });
   };
 
-  const getDataUrl = (imageData: ImageData, canvas: HTMLCanvasElement): string => {
+  const drawSourceImages = (canvases: HTMLCanvasElement[], images: ImageListType): Promise<void[]> => {
+    const pairs: [HTMLCanvasElement, ImageType][] = canvases.map((canvas, index) => [canvas, uploadedImages[index]]);
+    return Promise.all(pairs.map(([canvas, srcImage]) => drawImageToCanvas(srcImage, canvas)));
+  };
+
+  const getImageDataFromCanvas = (canvas: HTMLCanvasElement): ImageData | null => {
     const context = canvas.getContext("2d");
 
-    if (context) {
-      context.putImageData(imageData, 0, 0);
-      return canvas.toDataURL();
+    if (!context) {
+      return null;
     }
-    return "";
-  };
 
-  const drawSourceAndGetData = (): Promise<ImageData[]> => {
-    const canvas0 = canvasRef0.current;
-    const canvas1 = canvasRef1.current;
+    return context.getImageData(0, 0, canvas.width, canvas.height);
+  }
 
-    if (canvas0 && canvas1) {
-      const canvases = [canvas0, canvas1];
-
-      const pairs: [HTMLCanvasElement, ImageType][] = canvases.map((canvas, index) => [canvas, images[index]]);
-
-      return Promise.all(pairs.map(([canvas, srcImage]) => drawImageToCanvas(srcImage, canvas)));
-    } else {
-      return Promise.resolve([]);
-    }
-  };
-
-  const drawResult = (imageData: ImageData[]): string[] => {
+  const getProcessedImageDatum = (imageData: ImageData[]): string[] => {
     const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return [];
+    }
     const [imageDataLeft, imageDataRight] = imageData;
 
     canvas.width = imageDataLeft.width;
@@ -111,15 +105,35 @@ function App() {
     return permutations.map((permutation) => {
       const segmentsToBeCopied = permutation.map((value) => segments[value]);
 
-      const result = processImagePair(imageDataLeft, imageDataRight, segmentsToBeCopied);
-      return getDataUrl(result, canvas);
+      const resultImageData = processImagePair(imageDataLeft, imageDataRight, segmentsToBeCopied);
+
+      const seamsToBeProcessed = permutation
+        .flatMap((value) => segmentToSeams[value])
+        .filter((seam) => !permutation.includes(seam.segment))
+        .forEach((seam) => {
+          processImageSeam(imageDataLeft, resultImageData, seam);
+        })
+
+      context.putImageData(resultImageData, 0, 0);
+      return canvas.toDataURL();
     });
   };
 
   const processImages = async () => {
-    const imageData = await drawSourceAndGetData();
-    const results = drawResult(imageData);
-    setImageResults(results);
+    const canvasLeft = canvasLeftRef.current;
+    const canvasRight = canvasRightRef.current;
+
+    if (canvasLeft && canvasRight) {
+      await drawSourceImages([canvasLeft, canvasRight], uploadedImages);
+
+      const imageDataLeft = getImageDataFromCanvas(canvasLeft);
+      const imageDataRight = getImageDataFromCanvas(canvasRight);
+
+      if (imageDataLeft && imageDataRight) {
+        const results = getProcessedImageDatum([imageDataLeft, imageDataRight]);
+        setImageResults(results);
+      }
+    }
   };
 
   return (
@@ -133,9 +147,9 @@ function App() {
       </AppBar>
       <ReactImageUploading
         multiple
-        value={images}
+        value={uploadedImages}
         onChange={onChange}
-        maxNumber={2}
+        maxNumber={8}
       >
         {({
           imageList,
@@ -220,7 +234,7 @@ function App() {
             <Typography variant="h6">
               Permutations
             </Typography>
-            <ImageList cols={8}>
+            <ImageList cols={2}>
               {imageResults.map((result) => <ImageListItem key={result}>
                 <img src={result} />
               </ImageListItem>)}
@@ -238,10 +252,10 @@ export default App;
 //** garbage */
 // Mask border between images
 // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
-//   const index = Math.floor(counter / 4);
+//   const index = Math.round(counter / 4);
 
 //   const x = index % imageDataLeft.width;
-//   const y = Math.floor(index / imageDataLeft.width);
+//   const y = Math.round(index / imageDataLeft.width);
 
 //   const xMinimumBoundary = oneThirdWidth - 5;
 //   const xMaximumBoundary = oneThirdWidth + 5;
@@ -265,10 +279,10 @@ export default App;
 
 // Paint by neighbours
 // for(let counter = 0; counter < 4 * imageDataLeft.width * imageDataLeft.height; counter += 4) {
-//   const index = Math.floor(counter / 4);
+//   const index = Math.round(counter / 4);
 
 //   const x = index % imageDataLeft.width;
-//   const y = Math.floor(index / imageDataLeft.width);
+//   const y = Math.round(index / imageDataLeft.width);
 
 //   const xMinimumBoundary = oneThirdWidth - 5;
 //   const xMaximumBoundary = oneThirdWidth + 5;
