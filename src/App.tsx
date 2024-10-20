@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import ReactImageUploading, { ImageListType, ImageType } from 'react-images-uploading';
-import { processImagePair, segments } from './ImageCopyStrategies';
+import { processImagePair } from './ImageCopyStrategies';
 
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -15,6 +15,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ImageList, ImageListItem } from '@mui/material';
 import { processImageSeam, segmentToSeams } from './ImageSeamProcessor';
+import { segments } from './utils/Segment';
 
 function App() {
   const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
@@ -107,12 +108,12 @@ function App() {
 
       const resultImageData = processImagePair(imageDataLeft, imageDataRight, segmentsToBeCopied);
 
-      const seamsToBeProcessed = permutation
+      permutation
         .flatMap((value) => segmentToSeams[value])
         .filter((seam) => !permutation.includes(seam.segment))
         .forEach((seam) => {
           processImageSeam(imageDataLeft, resultImageData, seam);
-        })
+        });
 
       context.putImageData(resultImageData, 0, 0);
       return canvas.toDataURL();
@@ -234,7 +235,7 @@ function App() {
             <Typography variant="h6">
               Permutations
             </Typography>
-            <ImageList cols={2}>
+            <ImageList cols={8}>
               {imageResults.map((result) => <ImageListItem key={result}>
                 <img src={result} />
               </ImageListItem>)}
