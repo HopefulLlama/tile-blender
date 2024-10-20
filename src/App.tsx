@@ -21,6 +21,7 @@ import worker from 'workerize-loader!./worker/worker'
 function App() {
   const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
   const [imageResults, setImageResults] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const canvasLeftRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRightRef = useRef<HTMLCanvasElement | null>(null);
@@ -122,6 +123,8 @@ function App() {
   };
 
   const processImages = async () => {
+    setIsProcessing(true);
+
     const canvasLeft = canvasLeftRef.current;
     const canvasRight = canvasRightRef.current;
 
@@ -136,6 +139,7 @@ function App() {
         setImageResults(results);
       }
     }
+    setIsProcessing(false);
   };
 
   return (
@@ -203,7 +207,12 @@ function App() {
         )}
       </ReactImageUploading>
 
-      <Card variant="outlined" sx={{ marginTop: '1em', marginBottom: '1em'}}>
+      {isProcessing && <p>processing...</p>}
+      <Card variant="outlined" sx={{
+        marginTop: '1em',
+        marginBottom: '1em',
+        display: !isProcessing ? "block" : "none"
+      }}>
         <Typography variant="h6">
           Results
         </Typography>
