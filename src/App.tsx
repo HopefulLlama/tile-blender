@@ -234,7 +234,7 @@ function App() {
             <Typography variant="h6">
               Permutations
             </Typography>
-            <ImageList cols={8}>
+            <ImageList cols={2}>
               {imageResults.map((result) => <ImageListItem key={result}>
                 <img src={result} />
               </ImageListItem>)}

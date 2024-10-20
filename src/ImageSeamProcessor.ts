@@ -214,8 +214,36 @@ const seamToPlacement: { [key: number]: SeamPlacement } = {
     type: seamDisplayType.VERTICAL,
     getXOffset: () => 0,
     getYOffset: () => 0,
-    getSourcePixels: () => [],
-    setDestinationPixels: () => {},
+    getSourcePixels: (source: ImageData, x: number, y: number): number[][] => {
+      const segmentHeight = Math.round(source.height / 3);
+
+      const pixels = [];
+      for(let yCounter = 0; yCounter < segmentHeight; yCounter++) {
+        for(let xCounter = 0; xCounter < pixelsPerDither; xCounter++) {
+          const xOffset = ((xCounter + 1) * 2);
+          const index = convertXYToIndex(source.width, x - xOffset, y + yCounter);
+
+          const pixel = getPixelAtIndex(source, index);
+          pixels.push(pixel);
+        }
+      }
+
+      return pixels;
+    },
+    setDestinationPixels(data, newData, x, y) {
+      const destinationIndex = convertXYToIndex(data.width, x, y);
+
+      newData.forEach((pixel, index) => {
+        const xJitter = Math.floor(index / pixelsPerDither) % 2;
+        const xOffset = ((Math.floor(index % pixelsPerDither) * 2) + xJitter) * 4;
+        const yOffset = Math.floor(index / pixelsPerDither) * data.width * 4;
+
+        pixel.forEach((pixelData, pixelIndex) => {
+          const finalIndex = destinationIndex + xOffset + yOffset + pixelIndex;
+          data.data[finalIndex] = pixelData;
+        });
+      });
+    },
   },
   [SeamOrientation.NORTH_WEST]: {
     type: seamDisplayType.CORNER,
