@@ -102,7 +102,7 @@ function App() {
 
   const getProcessedImageDatum = (imageData: ImageData[]): Promise<string[]> => {
     const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
 
     if (!context) {
       return Promise.resolve([]);
