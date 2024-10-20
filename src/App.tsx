@@ -136,7 +136,8 @@ function App() {
 
       if (imageDataLeft && imageDataRight) {
         const results = await getProcessedImageDatum([imageDataLeft, imageDataRight]);
-        setImageResults(results);
+        const excludeFirstAndLast = results.slice(1, -2);
+        setImageResults(excludeFirstAndLast);
       }
     }
     setIsProcessing(false);
