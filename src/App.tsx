@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import ReactImageUploading, { ImageListType, ImageType } from 'react-images-uploading';
-import { processImagePair } from './ImageCopyStrategies';
 
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
@@ -9,13 +8,15 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
 import Container from '@mui/material/Container';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { ImageList, ImageListItem } from '@mui/material';
-import { processImageSeam, segmentToSeams } from './ImageSeamProcessor';
 import { segments } from './utils/Segment';
+
+// @ts-ignore
+// eslint-disable-next-line
+import worker from 'workerize-loader!./worker/worker'
 
 function App() {
   const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
@@ -91,33 +92,33 @@ function App() {
     return context.getImageData(0, 0, canvas.width, canvas.height);
   }
 
-  const getProcessedImageDatum = (imageData: ImageData[]): string[] => {
+  const processImageWithWorker = async (permutation: number[], imageDataLeft: ImageData, imageDataRight: ImageData): Promise<ImageData> => {
+    const imageProcessWorker = worker();
+    const result = await imageProcessWorker.processImage(permutation, imageDataLeft, imageDataRight);
+    imageProcessWorker.terminate();
+
+    return result;
+  };
+
+  const getProcessedImageDatum = (imageData: ImageData[]): Promise<string[]> => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
     if (!context) {
-      return [];
+      return Promise.resolve([]);
     }
     const [imageDataLeft, imageDataRight] = imageData;
 
     canvas.width = imageDataLeft.width;
     canvas.height = imageDataRight.height;
 
-    return permutations.map((permutation) => {
-      const segmentsToBeCopied = permutation.map((value) => segments[value]);
-
-      const resultImageData = processImagePair(imageDataLeft, imageDataRight, segmentsToBeCopied);
-
-      permutation
-        .flatMap((value) => segmentToSeams[value])
-        .filter((seam) => !permutation.includes(seam.segment))
-        .forEach((seam) => {
-          processImageSeam(imageDataLeft, resultImageData, seam);
-        });
-
+    return Promise.all(permutations.map(async (permutation) => {
+      const resultImageData = await processImageWithWorker(permutation, imageDataLeft, imageDataRight);
       context.putImageData(resultImageData, 0, 0);
-      return canvas.toDataURL();
-    });
+      const dataUrl = canvas.toDataURL();
+
+      return dataUrl;
+    }));
   };
 
   const processImages = async () => {
@@ -131,7 +132,7 @@ function App() {
       const imageDataRight = getImageDataFromCanvas(canvasRight);
 
       if (imageDataLeft && imageDataRight) {
-        const results = getProcessedImageDatum([imageDataLeft, imageDataRight]);
+        const results = await getProcessedImageDatum([imageDataLeft, imageDataRight]);
         setImageResults(results);
       }
     }
