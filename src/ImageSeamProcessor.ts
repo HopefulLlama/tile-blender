@@ -1,50 +1,8 @@
-import { getPixelAtIndex, segments } from "./ImageCopyStrategies";
+import { convertVisualPixelToDataPixelIndex, getPixelAtIndex } from "./utils/Pixel";
+import { SeamLabel, SeamOrientation } from "./utils/Seam";
+import { Segment, segments } from "./utils/Segment";
 
-enum SeamOrientation {
-  NORTH,
-  NORTH_EAST,
-  EAST,
-  SOUTH_EAST,
-  SOUTH,
-  SOUTH_WEST,
-  WEST,
-  NORTH_WEST,
-};
-
-type Seam = {
-  segment: number;
-  orientation: SeamOrientation;
-};
-
-type SeamDisplayType = {
-  getWidth: (segmentWidth: number) => number;
-  getHeight: (segmentHeight: number) => number;
-};
-
-const seamDisplayType: { [key: string]: SeamDisplayType } = {
-  HORIZONTAL: {
-    getWidth: (segmentWidth: number) => segmentWidth,
-    getHeight: (segmentHeight: number) => segmentHeight / 5,
-  },
-  VERTICAL: {
-    getWidth: (segmentWidth: number) => segmentWidth / 5,
-    getHeight: (segmentHeight: number) => segmentHeight,
-  },
-  CORNER: {
-    getWidth: (segmentWidth: number) => segmentWidth / 5,
-    getHeight: (segmentHeight: number) => segmentHeight / 5,
-  },
-};
-
-type SeamPlacement = {
-  type: SeamDisplayType;
-  getXOffset: (segmentWidth: number) => number;
-  getYOffset: (segmentHeight: number) => number;
-  getSourcePixels: (data: ImageData, x: number, y: number) => number[][];
-  setDestinationPixels: (data: ImageData, newData: number[][], x: number, y: number) => void;
-};
-
-export const segmentToSeams:{ [key: number]: Seam[] } = {
+export const segmentToSeams:{ [key: number]: SeamLabel[] } = {
   1: [
     { segment: 2, orientation: SeamOrientation.WEST },
     { segment: 4, orientation: SeamOrientation.NORTH },
@@ -105,208 +63,21 @@ export const segmentToSeams:{ [key: number]: Seam[] } = {
   ],
 };
 
-const convertXYToIndex = (imageWidth: number, x: number, y: number): number => {
-  return ((y * imageWidth) + x) * 4;
-};
-
-const pixelsPerDither = 5;
-
-const seamToPlacement: { [key: number]: SeamPlacement } = {
-  [SeamOrientation.NORTH]: {
-    type: seamDisplayType.HORIZONTAL,
-    getXOffset: () => 0,
-    getYOffset: () => 0,
-    getSourcePixels: (source: ImageData, x: number, y: number): number[][] => {
-      const segmentWidth = Math.round(source.width / 3);
-
-      const pixels = [];
-      for(let xCounter = 0; xCounter < segmentWidth; xCounter++) {
-        for(let yCounter = 0; yCounter < pixelsPerDither; yCounter++) {
-          const yOffset = ((yCounter + 1) * 2);
-          const index = convertXYToIndex(source.width, x + xCounter, y - yOffset);
-
-          const pixel = getPixelAtIndex(source, index);
-          pixels.push(pixel);
-        }
-      }
-
-      return pixels;
-    },
-    setDestinationPixels(data, newData, x, y) {
-      const destinationIndex = convertXYToIndex(data.width, x, y);
-
-      newData.forEach((pixel, index) => {
-        const xVisualOffset = Math.floor(index / pixelsPerDither);
-        const yJitter = (x + xVisualOffset) % 2;
-
-        const xOffset = xVisualOffset * 4;
-        const yOffset = ((Math.floor(index % pixelsPerDither) * 2) + yJitter) * data.width * 4;
-
-        pixel.forEach((pixelData, pixelIndex) => {
-          const finalIndex = destinationIndex + xOffset + yOffset + pixelIndex;
-          data.data[finalIndex] = pixelData;
-        });
-      });
-    },
-  },
-  [SeamOrientation.NORTH_EAST]: {
-    type: seamDisplayType.CORNER,
-    getXOffset: (segmentWidth: number) => segmentWidth,
-    getYOffset: () => 0,
-    getSourcePixels: () => [],
-    setDestinationPixels: () => {},
-  },
-  [SeamOrientation.EAST]: {
-    type: seamDisplayType.VERTICAL,
-    getXOffset: (segmentWidth: number) => segmentWidth,
-    getYOffset: () => 0,
-    getSourcePixels: (source: ImageData, x: number, y: number): number[][] => {
-      const segmentHeight = Math.round(source.height / 3);
-
-      const pixels = [];
-      for(let yCounter = 0; yCounter < segmentHeight; yCounter++) {
-        for(let xCounter = 0; xCounter < pixelsPerDither; xCounter++) {
-          const xOffset = ((xCounter + 1) * 2);
-          const index = convertXYToIndex(source.width, x + xOffset, y + yCounter);
-
-          const pixel = getPixelAtIndex(source, index);
-          pixels.push(pixel);
-        }
-      }
-
-      return pixels;
-    },
-    setDestinationPixels(data, newData, x, y) {
-      const destinationIndex = convertXYToIndex(data.width, x, y);
-
-      newData.forEach((pixel, index) => {
-        const yVisualOffset = Math.floor(index / pixelsPerDither);
-        const xJitter = (y + yVisualOffset) % 2;
-
-        const xOffset = ((Math.floor(index % pixelsPerDither) * 2) + xJitter) * 4;
-        const yOffset = yVisualOffset * data.width * 4;
-
-        pixel.forEach((pixelData, pixelIndex) => {
-          const finalIndex = destinationIndex - xOffset + yOffset + pixelIndex;
-          data.data[finalIndex] = pixelData;
-        });
-      });
-    },
-  },
-  [SeamOrientation.SOUTH_EAST]: {
-    type: seamDisplayType.CORNER,
-    getXOffset: (segmentWidth: number) => segmentWidth,
-    getYOffset: (segmentHeight: number) => segmentHeight,
-    getSourcePixels: () => [],
-    setDestinationPixels: () => {},
-  },
-  [SeamOrientation.SOUTH]: {
-    type: seamDisplayType.HORIZONTAL,
-    getXOffset: () => 0,
-    getYOffset: (segmentHeight: number) => segmentHeight,
-    getSourcePixels: (source: ImageData, x: number, y: number): number[][] => {
-      const segmentWidth = Math.round(source.width / 3);
-
-      const pixels = [];
-      for(let xCounter = 0; xCounter < segmentWidth; xCounter++) {
-        for(let yCounter = 0; yCounter < pixelsPerDither; yCounter++) {
-          const yOffset = ((yCounter + 1) * 2);
-          const index = convertXYToIndex(source.width, x + xCounter, y + yOffset);
-
-          const pixel = getPixelAtIndex(source, index);
-          pixels.push(pixel);
-        }
-      }
-
-      return pixels;
-    },
-    setDestinationPixels(data, newData, x, y) {
-      const destinationIndex = convertXYToIndex(data.width, x, y);
-
-      newData.forEach((pixel, index) => {
-        const xVisualOffset = Math.floor(index / pixelsPerDither);
-        const yJitter = (x + xVisualOffset) % 2;
-
-        const xOffset = xVisualOffset * 4;
-        const yOffset = ((Math.floor(index % pixelsPerDither) * 2) + yJitter) * data.width * 4;
-
-        pixel.forEach((pixelData, pixelIndex) => {
-          const finalIndex = destinationIndex + xOffset - yOffset + pixelIndex;
-          data.data[finalIndex] = pixelData;
-        });
-      });
-    },
-  },
-  [SeamOrientation.SOUTH_WEST]: {
-    type: seamDisplayType.CORNER,
-    getXOffset: () => 0,
-    getYOffset: (segmentHeight: number) => segmentHeight,
-    getSourcePixels: () => [],
-    setDestinationPixels: () => {},
-  },
-  [SeamOrientation.WEST]: {
-    type: seamDisplayType.VERTICAL,
-    getXOffset: () => 0,
-    getYOffset: () => 0,
-    getSourcePixels: (source: ImageData, x: number, y: number): number[][] => {
-      const segmentHeight = Math.round(source.height / 3);
-
-      const pixels = [];
-      for(let yCounter = 0; yCounter < segmentHeight; yCounter++) {
-        for(let xCounter = 0; xCounter < pixelsPerDither; xCounter++) {
-          const xOffset = ((xCounter + 1) * 2);
-          const index = convertXYToIndex(source.width, x - xOffset, y + yCounter);
-
-          const pixel = getPixelAtIndex(source, index);
-          pixels.push(pixel);
-        }
-      }
-
-      return pixels;
-    },
-    setDestinationPixels(data, newData, x, y) {
-      const destinationIndex = convertXYToIndex(data.width, x, y);
-
-      newData.forEach((pixel, index) => {
-        const yVisualOffset = Math.floor(index / pixelsPerDither);
-        const xJitter = (y + yVisualOffset) % 2;
-
-        const xOffset = ((Math.floor(index % pixelsPerDither) * 2) + xJitter) * 4;
-        const yOffset = yVisualOffset * data.width * 4;
-
-        pixel.forEach((pixelData, pixelIndex) => {
-          const finalIndex = destinationIndex + xOffset + yOffset + pixelIndex;
-          data.data[finalIndex] = pixelData;
-        });
-      });
-    },
-  },
-  [SeamOrientation.NORTH_WEST]: {
-    type: seamDisplayType.CORNER,
-    getXOffset: () => 0,
-    getYOffset: () => 0,
-    getSourcePixels: () => [],
-    setDestinationPixels: () => {},
-  },
-}
-
-export const processImageSeam = (source: ImageData, copied: ImageData, seam: Seam): void => {
+export const processImageSeam = (source: ImageData, copied: ImageData, seam: SeamLabel): void => {
   const { segment, orientation } = seam;
-  const seamPlacement = seamToPlacement[orientation];
-  const { row, column } = segments[segment];
 
-  const segmentWidth = Math.round(source.width / 3);
-  const segmentHeight = Math.round(source.height / 3);
+  const [segmentData] = Segment.fromImageDataAndLabels(source, [segments[segment]]);
+  const ditherSeam = segmentData.getSeam(orientation, 0.2);
+  const visualPixels = ditherSeam.getPixelsToBeProcessed();
 
-  const segmentX = (column - 1) * segmentWidth;
-  const segmentY = (row - 1) * segmentHeight;
+  visualPixels.forEach((visualPixel) => {
+    const index = convertVisualPixelToDataPixelIndex(visualPixel, source.width);
 
-  const additionalSeamOffsetX = seamPlacement.getXOffset(segmentWidth);
-  const additionalSeamOffsetY = seamPlacement.getYOffset(segmentHeight);
+    const dataPixel = getPixelAtIndex(source, index);
+    dataPixel.forEach((data, dataIndex) => {
+      const finalIndex = index + dataIndex;
 
-  const x = segmentX + additionalSeamOffsetX;
-  const y = segmentY + additionalSeamOffsetY;
-
-  const pixels = seamPlacement.getSourcePixels(source, x, y);
-  seamPlacement.setDestinationPixels(copied, pixels, x, y);
+      copied.data[finalIndex] = data;
+    });
+  });
 };
