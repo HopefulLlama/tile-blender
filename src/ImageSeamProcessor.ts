@@ -136,8 +136,10 @@ const seamToPlacement: { [key: number]: SeamPlacement } = {
       const destinationIndex = convertXYToIndex(data.width, x, y);
 
       newData.forEach((pixel, index) => {
-        const xOffset = Math.floor(index / pixelsPerDither) * 4;
-        const yJitter = Math.floor(index / pixelsPerDither) % 2;
+        const xVisualOffset = Math.floor(index / pixelsPerDither);
+        const yJitter = (x + xVisualOffset) % 2;
+
+        const xOffset = xVisualOffset * 4;
         const yOffset = ((Math.floor(index % pixelsPerDither) * 2) + yJitter) * data.width * 4;
 
         pixel.forEach((pixelData, pixelIndex) => {
@@ -178,9 +180,11 @@ const seamToPlacement: { [key: number]: SeamPlacement } = {
       const destinationIndex = convertXYToIndex(data.width, x, y);
 
       newData.forEach((pixel, index) => {
-        const xJitter = Math.floor(index / pixelsPerDither) % 2;
+        const yVisualOffset = Math.floor(index / pixelsPerDither);
+        const xJitter = (y + yVisualOffset) % 2;
+
         const xOffset = ((Math.floor(index % pixelsPerDither) * 2) + xJitter) * 4;
-        const yOffset = Math.floor(index / pixelsPerDither) * data.width * 4;
+        const yOffset = yVisualOffset * data.width * 4;
 
         pixel.forEach((pixelData, pixelIndex) => {
           const finalIndex = destinationIndex - xOffset + yOffset + pixelIndex;
@@ -220,8 +224,10 @@ const seamToPlacement: { [key: number]: SeamPlacement } = {
       const destinationIndex = convertXYToIndex(data.width, x, y);
 
       newData.forEach((pixel, index) => {
-        const xOffset = Math.floor(index / pixelsPerDither) * 4;
-        const yJitter = Math.floor(index / pixelsPerDither) % 2;
+        const xVisualOffset = Math.floor(index / pixelsPerDither);
+        const yJitter = (x + xVisualOffset) % 2;
+
+        const xOffset = xVisualOffset * 4;
         const yOffset = ((Math.floor(index % pixelsPerDither) * 2) + yJitter) * data.width * 4;
 
         pixel.forEach((pixelData, pixelIndex) => {
@@ -262,9 +268,11 @@ const seamToPlacement: { [key: number]: SeamPlacement } = {
       const destinationIndex = convertXYToIndex(data.width, x, y);
 
       newData.forEach((pixel, index) => {
-        const xJitter = Math.floor(index / pixelsPerDither) % 2;
+        const yVisualOffset = Math.floor(index / pixelsPerDither);
+        const xJitter = (y + yVisualOffset) % 2;
+
         const xOffset = ((Math.floor(index % pixelsPerDither) * 2) + xJitter) * 4;
-        const yOffset = Math.floor(index / pixelsPerDither) * data.width * 4;
+        const yOffset = yVisualOffset * data.width * 4;
 
         pixel.forEach((pixelData, pixelIndex) => {
           const finalIndex = destinationIndex + xOffset + yOffset + pixelIndex;
