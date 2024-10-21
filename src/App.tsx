@@ -11,12 +11,13 @@ import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { ImageList, ImageListItem } from '@mui/material';
+import { ImageList, ImageListItem, Paper } from '@mui/material';
 import { segments } from './utils/Segment';
 
 // @ts-ignore
 // eslint-disable-next-line
 import worker from 'workerize-loader!./worker/worker'
+import { JonImage } from './JonImage';
 
 function App() {
   const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
@@ -25,6 +26,11 @@ function App() {
 
   const canvasLeftRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRightRef = useRef<HTMLCanvasElement | null>(null);
+
+  const placeholderSourceImages = [
+    { name: "Left", source: "https://placehold.co/128" },
+    { name: "Right", source: "https://placehold.co/128" },
+  ];
 
   const getCombinations = (digits: number[]): number[][] => {
     const result: number[][] = [];
@@ -50,8 +56,8 @@ function App() {
   const permutations = getCombinations(Object.keys(segments).map((key) => parseInt(key, 10)));
 
     useEffect(() => {
-      canvasLeftRef.current = document.getElementById("0") as HTMLCanvasElement;
-      canvasRightRef.current = document.getElementById("1") as HTMLCanvasElement;
+      canvasLeftRef.current = document.getElementById("left") as HTMLCanvasElement;
+      canvasRightRef.current = document.getElementById("right") as HTMLCanvasElement;
     }, [])
 
   const onChange = (imageList: ImageListType) => {
@@ -161,19 +167,16 @@ function App() {
         {({
           imageList,
           onImageUpload,
+          onImageRemove,
           onImageRemoveAll,
           onImageUpdate,
-          onImageRemove,
           isDragging,
           dragProps
         }) => (
-          <Card variant="outlined" sx={{ marginTop: '1em', marginBottom: '1em'}}>
+          <Paper className="jon-paper">
             <Typography variant="h6">
               Upload Images
             </Typography>
-
-            Upload two images, and press process to get all permutations.
-
             <Box>
               <Button
                 variant="text"
@@ -184,76 +187,67 @@ function App() {
               >
                 Click or Drop here
               </Button>
-              {imageList.length > 0 && <Button variant="outlined" onClick={onImageRemoveAll}>Remove all images</Button>}
+              <Button variant="outlined" onClick={onImageRemoveAll} disabled={imageList.length === 0}>Remove all images</Button>
             </Box>
             <Box>
-              {imageList.map((image, index) => (
-                <Card variant="outlined" sx={{ display: "inline-block" }}>
-                  <CardContent>
-                    <Typography gutterBottom sx={{ color: 'text.secondary' }}>
-                      { index === 0 ? 'Left' : 'Right'}
-                    </Typography>
-                    <img src={image.dataURL} />
-                  </CardContent>
-                  <CardActions>
-                    <Button size="small" onClick={(() => onImageUpdate(index))}>Update</Button>
-                    <Button size="small" onClick={(() => onImageRemove(index))}>Remove</Button>
-                  </CardActions>
-                </Card>
-              ))}
+              {placeholderSourceImages.map((placeholderImage, index) => {
+                const image = imageList[index];
+                const source = image?.dataURL ?? placeholderImage.source;
+
+                return <JonImage
+                  title={placeholderImage.name}
+                  source={source}
+                  buttons={[
+                    { text: 'Update', onClick: () => onImageUpdate(index) },
+                    { text: 'Remove', onClick: () => onImageRemove(index) },
+                  ]}
+                />
+              })}
             </Box>
 
             <Button variant='contained' disabled={imageList.length < 2} onClick={() => processImages()}>Process Images</Button>
-          </Card>
+          </Paper>
         )}
       </ReactImageUploading>
 
-      {isProcessing && <p>processing...</p>}
-      <Card variant="outlined" sx={{
-        marginTop: '1em',
-        marginBottom: '1em',
-        display: !isProcessing ? "block" : "none"
-      }}>
+      {isProcessing && <Paper className="jon-paper"><p>processing...</p></Paper>}
+
+      <Paper className="jon-paper" sx={{ display: !isProcessing ? "block" : "none" }}>
         <Typography variant="h6">
           Results
         </Typography>
-
         {imageResults.length === 0 && <p>No results yet!</p>}
         <Box sx={{ display: imageResults.length > 0 ? "block" : "none"}}>
           <Box>
-            <Typography variant="h6">
+            <Typography variant="subtitle1">
               Source Images
             </Typography>
-            <Card sx={{ display: "inline-block" }}>
+            <Card variant="outlined" sx={{ display: "inline-block", margin: "1em 1em 1em 0" }}>
               <CardContent>
-                <Typography gutterBottom sx={{ color: 'text.secondary' }}>
+                <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
                   Left
                 </Typography>
-                <canvas id="0" />
+                <canvas id="left" />
               </CardContent>
             </Card>
-            <Card sx={{ display: "inline-block" }}>
+            <Card variant="outlined" sx={{ display: "inline-block", margin: "1em 1em 1em 0" }}>
               <CardContent>
-                <Typography gutterBottom sx={{ color: 'text.secondary' }}>
+                <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
                   Right
                 </Typography>
-                <canvas id="1" />
+                <canvas id="right" />
               </CardContent>
             </Card>
           </Box>
 
           <Box>
-            <Typography variant="h6">
+            <Typography variant="subtitle1">
               Permutations
             </Typography>
-            <ImageList cols={8}>
-              {imageResults.map((result) => <ImageListItem key={result}>
-                <img src={result} />
-              </ImageListItem>)}
-            </ImageList>
+            {imageResults.map((result) => <JonImage source={result} />)}
           </Box>
         </Box>
-      </Card>
+      </Paper>
 
     </Container>
   );
