@@ -180,7 +180,7 @@ function App() {
             <Box>
               <Button
                 variant="text"
-                style={isDragging ? { color: "red" } : undefined}
+                style={isDragging ? { color: "green" } : undefined}
                 disabled={imageList.length === 2}
                 onClick={onImageUpload}
                 {...dragProps}
