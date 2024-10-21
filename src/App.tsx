@@ -18,10 +18,23 @@ import { segments } from './utils/Segment';
 // eslint-disable-next-line
 import worker from 'workerize-loader!./worker/worker'
 import { JonImage } from './JonImage';
+import { getCombinations } from './utils/Combinations';
+
+type ProcessedImage = {
+  name: string;
+  dataUrl: string;
+}
+
+const removeFileExtension = (fileName: string): string => {
+  const parts = fileName.split(".");
+  parts.pop();
+
+  return parts.join("");
+}
 
 function App() {
   const [uploadedImages, setUploadedImages] = useState<ImageListType>([]);
-  const [imageResults, setImageResults] = useState<string[]>([]);
+  const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const canvasLeftRef = useRef<HTMLCanvasElement | null>(null);
@@ -31,27 +44,6 @@ function App() {
     { name: "Left", source: "https://placehold.co/128" },
     { name: "Right", source: "https://placehold.co/128" },
   ];
-
-  const getCombinations = (digits: number[]): number[][] => {
-    const result: number[][] = [];
-
-    // Get the total number of possible combinations, which is 2^n (where n is the number of digits)
-    const totalCombinations = Math.pow(2, digits.length);
-
-    // Loop through all possible combinations (each combination corresponds to a binary number)
-    for (let i = 0; i < totalCombinations; i++) {
-      const combination: number[] = [];
-      for (let j = 0; j < digits.length; j++) {
-        // Check if the jth bit of i is set (1) to include the corresponding digit
-        if (i & (1 << j)) {
-          combination.push(digits[j]);
-        }
-      }
-      result.push(combination);
-    }
-
-    return result;
-  };
 
   const permutations = getCombinations(Object.keys(segments).map((key) => parseInt(key, 10)));
 
@@ -107,7 +99,7 @@ function App() {
     return result;
   };
 
-  const getProcessedImageDatum = (imageData: ImageData[]): Promise<string[]> => {
+  const getProcessedImageDatum = (imageData: ImageData[]): Promise<ProcessedImage[]> => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { willReadFrequently: true });
 
@@ -124,7 +116,10 @@ function App() {
       context.putImageData(resultImageData, 0, 0);
       const dataUrl = canvas.toDataURL();
 
-      return dataUrl;
+      return {
+        name: `${removeFileExtension(uploadedImages[1].file?.name ?? "")}-${removeFileExtension(uploadedImages[0].file?.name ?? "")}-${permutation.join("")}.png`,
+        dataUrl,
+      };
     }));
   };
 
@@ -142,8 +137,7 @@ function App() {
 
       if (imageDataLeft && imageDataRight) {
         const results = await getProcessedImageDatum([imageDataLeft, imageDataRight]);
-        const excludeFirstAndLast = results.slice(1, -2);
-        setImageResults(excludeFirstAndLast);
+        setProcessedImages(results);
       }
     }
     setIsProcessing(false);
@@ -216,8 +210,8 @@ function App() {
         <Typography variant="h6">
           Results
         </Typography>
-        {imageResults.length === 0 && <p>No results yet!</p>}
-        <Box sx={{ display: imageResults.length > 0 ? "block" : "none"}}>
+        {processedImages.length === 0 && <p>No results yet!</p>}
+        <Box sx={{ display: processedImages.length > 0 ? "block" : "none"}}>
           <Box>
             <Typography variant="subtitle1">
               Source Images
@@ -244,7 +238,7 @@ function App() {
             <Typography variant="subtitle1">
               Permutations
             </Typography>
-            {imageResults.map((result) => <JonImage source={result} />)}
+            {processedImages.map((processedImage) => <JonImage source={processedImage.dataUrl} />)}
           </Box>
         </Box>
       </Paper>
