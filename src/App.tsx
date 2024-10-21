@@ -19,9 +19,12 @@ import { segments } from './utils/Segment';
 import worker from 'workerize-loader!./worker/worker'
 import { JonImage } from './JonImage';
 import { getCombinations } from './utils/Combinations';
+import JSZip from 'jszip';
+import { saveAs } from "file-saver";
 
 type ProcessedImage = {
   name: string;
+  blob: Blob;
   dataUrl: string;
 }
 
@@ -115,9 +118,13 @@ function App() {
       const resultImageData = await processImageWithWorker(permutation, imageDataLeft, imageDataRight);
       context.putImageData(resultImageData, 0, 0);
       const dataUrl = canvas.toDataURL();
+      const blob: Blob = await (new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob as Blob));
+      }));
 
       return {
         name: `${removeFileExtension(uploadedImages[1].file?.name ?? "")}-${removeFileExtension(uploadedImages[0].file?.name ?? "")}-${permutation.join("")}.png`,
+        blob,
         dataUrl,
       };
     }));
@@ -141,6 +148,16 @@ function App() {
       }
     }
     setIsProcessing(false);
+  };
+
+  const downloadAsZip = async (): Promise<void> => {
+    const zip = new JSZip();
+    processedImages.forEach((processedImage) => {
+      const { name, blob } = processedImage;
+      zip.file(`${name}`, blob);
+    });
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "tileblender.zip");
   };
 
   return (
@@ -238,6 +255,9 @@ function App() {
             <Typography variant="subtitle1">
               Permutations
             </Typography>
+            <Box>
+              <Button variant="outlined" onClick={() => {downloadAsZip()}}>Download as .zip</Button>
+            </Box>
             {processedImages.map((processedImage) => <JonImage source={processedImage.dataUrl} />)}
           </Box>
         </Box>
