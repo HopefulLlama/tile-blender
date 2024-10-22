@@ -6,12 +6,11 @@ import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import { ImageList, ImageListItem, Paper } from '@mui/material';
+import { Paper } from '@mui/material';
 import { segments } from './utils/Segment';
 
 // @ts-ignore
@@ -47,6 +46,8 @@ function App() {
     { name: "Left", source: "https://placehold.co/128" },
     { name: "Right", source: "https://placehold.co/128" },
   ];
+
+  const numberOfWorkers = navigator.hardwareConcurrency;
 
   const permutations = getCombinations(Object.keys(segments).map((key) => parseInt(key, 10)));
 
@@ -94,15 +95,20 @@ function App() {
     return context.getImageData(0, 0, canvas.width, canvas.height);
   }
 
-  const processImageWithWorker = async (permutation: number[], imageDataLeft: ImageData, imageDataRight: ImageData): Promise<ImageData> => {
+  const processImageWithWorker = async (permutations: number[][], imageDataLeft: ImageData, imageDataRight: ImageData): Promise<[number[], ImageData][]> => {
     const imageProcessWorker = worker();
-    const result = await imageProcessWorker.processImage(permutation, imageDataLeft, imageDataRight);
+    const results: [number[], ImageData][]= await (Promise.all(permutations.map(
+      async (permutation) => {
+        const imageData = await imageProcessWorker.processImage(permutation, imageDataLeft, imageDataRight);
+        return [permutation, imageData];
+      },
+    )));
     imageProcessWorker.terminate();
 
-    return result;
+    return results;
   };
 
-  const getProcessedImageDatum = (imageData: ImageData[]): Promise<ProcessedImage[]> => {
+  const getProcessedImageDatum = async (imageData: ImageData[]): Promise<ProcessedImage[]> => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d", { willReadFrequently: true });
 
@@ -114,8 +120,17 @@ function App() {
     canvas.width = imageDataLeft.width;
     canvas.height = imageDataRight.height;
 
-    return Promise.all(permutations.map(async (permutation) => {
-      const resultImageData = await processImageWithWorker(permutation, imageDataLeft, imageDataRight);
+    const permutationsAsChunks = Array(Math.ceil(permutations.length / numberOfWorkers))
+      .fill(null)
+      .map((_, index) => index * numberOfWorkers)
+      .map((index) => permutations.slice(index, index + numberOfWorkers))
+
+    const resultsData = (await Promise.all(permutationsAsChunks.flatMap(async (permutations) => {
+      return await processImageWithWorker(permutations, imageDataLeft, imageDataRight);
+    }))).flat();
+
+    const results = await Promise.all(resultsData.map(async (resultsData) => {
+      const [permutation, resultImageData] = resultsData;
       context.putImageData(resultImageData, 0, 0);
       const dataUrl = canvas.toDataURL();
       const blob: Blob = await (new Promise((resolve) => {
@@ -128,6 +143,8 @@ function App() {
         dataUrl,
       };
     }));
+
+    return results;
   };
 
   const processImages = async () => {
